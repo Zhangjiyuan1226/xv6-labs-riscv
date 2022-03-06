@@ -150,6 +150,7 @@ freeproc(struct proc *p)
   p->killed = 0;
   p->xstate = 0;
   p->state = UNUSED;
+   p->trace_mask = 0;
 }
 
 // Create a user page table for a given process,
@@ -699,4 +700,18 @@ sys_trace(){
   if(argint(0, &myproc()->trace_mask) < 0)
     return -1;
   return 0;
+}
+
+// state字段不为UNUSED的进程数
+int
+getnproc(void){
+  struct proc *p;
+  int nums = 0;
+  for(p = proc; p < &proc[NPROC]; p++) {
+    acquire(&p->lock);
+    if(p->state != UNUSED)
+      nums++;
+    release(&p->lock);
+  }
+  return nums;
 }

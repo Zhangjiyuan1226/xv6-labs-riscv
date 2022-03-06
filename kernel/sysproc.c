@@ -6,6 +6,10 @@
 #include "memlayout.h"
 #include "spinlock.h"
 #include "proc.h"
+#include "sysinfo.h"
+
+int freemem(void);
+int getnproc(void);
 
 uint64
 sys_exit(void)
@@ -94,4 +98,27 @@ sys_uptime(void)
   xticks = ticks;
   release(&tickslock);
   return xticks;
+}
+
+uint64
+sys_sysinfo(void)
+{
+  struct sysinfo sysinfo;
+  struct proc *p;
+  p = myproc();
+  uint64 addr;
+
+  // 这里是用addr指向了传递过来的sysinfo参数
+  // 函数用一个sysinfo变量接收了kernel的sysinfo
+
+  sysinfo.freemem = freemem();
+  sysinfo.nproc = getnproc();
+
+  // 获取第0个参数，并放到addr
+  if(argaddr(0, &addr) < 0)
+    return -1;
+  // 通过copyout将sysinfo参数中的值传递出去
+  if(copyout(p->pagetable, addr, (char*) &sysinfo, sizeof(sysinfo)) < 0)
+    return -1;
+  return 0;
 }

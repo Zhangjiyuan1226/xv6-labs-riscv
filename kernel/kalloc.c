@@ -80,3 +80,20 @@ kalloc(void)
     memset((char*)r, 5, PGSIZE); // fill with junk
   return (void*)r;
 }
+
+// 获取空闲内存的字节数,
+// 首先遍历空闲链表，每个空闲块都是一个PGSIZE
+// 经过一个块，sum加一个pagsize
+int
+freemem(void){
+  struct run *r;
+  uint64 sum = 0;
+  acquire(&kmem.lock);
+  r = kmem.freelist;
+  while(r){
+    r = r->next;
+    sum += PGSIZE;
+  }
+  release(&kmem.lock);
+  return sum;
+}
