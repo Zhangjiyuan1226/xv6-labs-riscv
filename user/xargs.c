@@ -1,55 +1,70 @@
 #include "kernel/types.h"
-#include "kernel/param.h"
 #include "kernel/stat.h"
 #include "user/user.h"
-#include "kernel/fs.h"
-#define MSGSIZE 16
-int
-main(int argc, char *argv[])	// 这个arg参数存在一些问题，去掉const可以编译
-{
-    sleep(10);
-    /*
-    管道会将前面指令的标准输出重定向到标准输入，
-    所以只需从fd = 0的标准输入中读出指令即可
-    */
-    char buf[MSGSIZE]; 
-    read(0, buf, MSGSIZE);
 
-    // exec 命令和附加参数
-    char *xargv[MAXARG];       // 指令的参数
-    int xargc = 0;
-    int times = 1;
-    if(strcmp(argv[1], "-n") != 0){
-        for(int i = 1; i < argc; i++){
-            xargv[xargc++] = argv[i];
+char* readline() {
+    char* buf = malloc(100);
+    char* p = buf;
+    while(read(0, p, 1) != 0){
+        if(*p == '\n' || *p == '\0'){
+            *p = '\0';
+            return buf;
         }
-    }else{
-        times = atoi(argv[2]);
-        for(int i = 3; i < argc; i++){
-            xargv[xargc++] = argv[i];
-        }
+        p++;
     }
-    char *p = buf;
-
-    for(int i = 0; i < MSGSIZE; i++){
-        if(buf[i] == '\n'){
-            int pid = fork();
-            if(pid > 0){
-                p = &buf[i + 1];
-                wait(0);
-            }else{
-                buf[i] = 0;
-                xargv[xargc] = p;
-                xargc++;
-                xargv[xargc] = 0;
-                xargc++;
-                for(int j = 0; j < times;j++)
-                    exec(xargv[0], xargv);
-                exit(0);
-            }
-        }
-    }
-
-    exit(0);
+    if(p != buf) return buf;
+    free(buf);
     return 0;
+}
+
+int
+main(int argc, char *argv[]){
+    if(argc < 2) {
+        printf("Usage: xargs [command]\n");
+        exit(-1);
+    }
+    char* l;
+    argv++;
+    char* nargv[16];
+    char** pna = nargv;
+    char** pa = argv;
+    while(*pa != 0){
+        *pna = *pa;
+        pna++;
+        pa++;
+    }
+    while((l = readline()) != 0){
+        //printf("%s\n", l);
+        char* p = l;
+        char* buf = malloc(36);
+        char* bh = buf;
+        int nargc = argc - 1;
+        while(*p != 0){
+            if(*p == ' ' && buf != bh){
+                *bh = 0;
+                nargv[nargc] = buf;
+                buf = malloc(36);
+                bh = buf;
+                nargc++;
+            }else{
+                *bh = *p;
+                bh++;
+            }
+            p++;
+        }
+        if(buf != bh){
+            nargv[nargc] = buf;
+            nargc++;
+        }
+        nargv[nargc] = 0;
+        free(l);
+        int pid = fork();
+        if(pid == 0){
+            // printf("%s %s\n", nargv[0], nargv[1]);
+            exec(nargv[0], nargv);
+        }else{
+            wait(0);
+        }
+    }
+    exit(0);
 }

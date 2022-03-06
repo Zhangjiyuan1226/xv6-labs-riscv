@@ -53,7 +53,7 @@ main(int argc, char *argv[])
   for(i = 2; i < argc; i++){
     if((fd = open(argv[i], 0)) < 0){
       printf("grep: cannot open %s\n", argv[i]);
-      exit(1);
+      exit(-1);
     }
     grep(pattern, fd);
     close(fd);
