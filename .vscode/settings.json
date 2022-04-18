@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "*.json": "jsonc",
+        "file.h": "c",
+        "proc.h": "c"
+    }
+}
