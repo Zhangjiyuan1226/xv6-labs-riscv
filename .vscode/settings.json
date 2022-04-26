@@ -3,6 +3,7 @@
         "*.json": "jsonc",
         "defs.h": "c",
         "spinlock.h": "c",
-        "fs.h": "c"
+        "fs.h": "c",
+        "syscall.h": "c"
     }
 }
