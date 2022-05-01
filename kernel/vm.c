@@ -181,7 +181,7 @@ uvmunmap(pagetable_t pagetable, uint64 va, uint64 npages, int do_free)
 
   for(a = va; a < va + npages*PGSIZE; a += PGSIZE){
     if((pte = walk(pagetable, a, 0)) == 0)
-      panic("uvmunmap: walk");
+      continue;
     if((*pte & PTE_V) == 0)
       // panic("uvmunmap: not mapped");
       continue;
@@ -316,9 +316,9 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
 
   for(i = 0; i < sz; i += PGSIZE){
     if((pte = walk(old, i, 0)) == 0)
-      panic("uvmcopy: pte should exist");
+      continue;
     if((*pte & PTE_V) == 0)
-      panic("uvmcopy: page not present");
+      continue;
     pa = PTE2PA(*pte);
     flags = PTE_FLAGS(*pte);
     if((mem = kalloc()) == 0)
@@ -440,4 +440,30 @@ copyinstr(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max)
   } else {
     return -1;
   }
+}
+
+
+// Recursively free page-table pages.
+void
+vmprint(pagetable_t pagetable, int level){
+  if(level == 2)
+    printf("page table %p\n", pagetable);
+  // there are 2^9 = 512 PTEs in a page table.
+  for(int i = 0; i < 512; i++){
+    pte_t pte = pagetable[i];
+    if((pte & PTE_V) && level > 0){
+      // this PTE points to a lower-level page table.
+      if(level == 2)
+        printf("..%d: pte %p pa %p\n", i, pte, PTE2PA(pte));
+      if(level == 1)
+        printf(".. ..%d: pte %p pa %p\n", i, pte, PTE2PA(pte));  
+      uint64 child = PTE2PA(pte);
+      vmprint((pagetable_t)child, level-1);
+    } else if((pte & PTE_V) && level == 0){
+      printf(".. .. ..%d: pte %p pa %p\n", i, pte, PTE2PA(pte));
+    }else if(pte & PTE_V){
+      panic("vmprint: leaf");
+    } 
+  }
+  // exit(0); //会发生panic init exiting 因为退出时p = initproc
 }
