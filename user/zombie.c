@@ -8,6 +8,9 @@
 int
 main(void)
 {
+  // uint a = 67;
+  // char *s = a+"";
+  // printf("%s\n",&s);
   if(fork() > 0)
     sleep(5);  // Let child exit before parent.
   exit(0);
