@@ -1,67 +1,50 @@
 #include "kernel/types.h"
 #include "kernel/stat.h"
 #include "user/user.h"
-
-void
-prime(int input_fd)
-{
-    int base;
-    /* Exit if last child */
-    if (read(input_fd, &base, sizeof(int)) == 0)
-    {
+void primes(int input_fd){
+    int start;
+    if(read(input_fd, &start, 4) != 4){
         exit(-1);
     }
-    printf("prime %d\n", base);
-
-    /* Create new child if not last */
-    int p[2];
-    pipe(p);
-    if (fork() == 0)
-    {
-        close(p[1]);
-        prime(p[0]);
-    }
-    else
-    {
-        close(p[0]);
-        int n;
-        int eof;
-        do
-        {
-            eof = read(input_fd, &n, sizeof(int));
-            if (n % base != 0)
-            {
-                write(p[1], &n, sizeof(int));
+    printf("prime %d\n", start);
+    int fds[2];
+    pipe(fds);
+    int pid = fork();
+    if(pid == 0){
+        close(fds[1]);
+        primes(fds[0]);
+        close(fds[0]);
+    }else{
+        close(fds[0]);
+        int num;
+        while(read(input_fd, &num, 4) == 4){
+            if(num % start != 0){
+                write(fds[1], &num, 4);
             }
-        } while (eof);
-
-        close(p[1]);
-    }
-    wait(0);
-    exit(0);
-}
-
-int 
-main(int argc, char const *argv[])
-{
-    int parent_fd[2];
-    pipe(parent_fd);
-    if (fork())
-    {
-        close(parent_fd[0]);    // 关闭没用的文件
-        int i;
-        for (i = 2; i < 36; i++)
-        {
-            write(parent_fd[1], &i, sizeof(int));
         }
-        close(parent_fd[1]);
+        close(fds[1]);
     }
-    else
-    {
-        close(parent_fd[1]);
-        prime(parent_fd[0]);
+    wait(0);
+    exit(0);
+ 
+}
+
+int main(int argc, char* argv[]){
+    int fds[2];
+    pipe(fds);
+    int pid = fork();
+    if(pid == 0){
+        close(fds[1]);
+        primes(fds[0]);
+        close(fds[0]);
+    }else{
+        close(fds[0]);
+        for(int i = 2; i <= 35; i++){
+            write(fds[1], &i, 4);
+        }
+        close(fds[1]);
+
     }
     wait(0);
     exit(0);
 }
-

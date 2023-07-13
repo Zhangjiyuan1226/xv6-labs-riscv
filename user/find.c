@@ -3,11 +3,6 @@
 #include "user/user.h"
 #include "kernel/fs.h"
 
-
-/* 
-  第一个参数：./README ./cat 类似的参数
-  返回结果： README cat
-*/ 
 char*
 fmtname(char *path)
 {
@@ -23,23 +18,14 @@ fmtname(char *path)
   if(strlen(p) >= DIRSIZ)
     return p;
   memmove(buf, p, strlen(p));
-  memset(buf+strlen(p), 0, DIRSIZ-strlen(p));
+  memset(buf+strlen(p), ' ', DIRSIZ-strlen(p));
+  printf("%s\n", buf);
+
   return buf;
 }
 
-int
-isrecursive(char *target){
-  char* buf = fmtname(target);
-  if(buf[0] == '.' && buf[1] == 0)
-    return 0;
-  if(buf[0] == '.' && buf[1] == '.' && buf[2] == 0)
-    return 0;
-
-  return 1;
-}
-
 void
-find(char *path, char *target)
+find(char *path, char* filename)
 {
   char buf[512], *p;
   int fd;
@@ -57,11 +43,11 @@ find(char *path, char *target)
     return;
   }
 
-  if(strcmp(fmtname(path), target) == 0){  // 递归进入文件后，比较文件名与目标名称是否一致
-    printf("%s  %d\n", path, st.type);
-  }
-
   switch(st.type){
+  case T_FILE:
+    printf("%s %d %d %l\n", fmtname(path), st.type, st.ino, st.size);
+    break;
+
   case T_DIR:
     if(strlen(path) + 1 + DIRSIZ + 1 > sizeof buf){
       printf("find: path too long\n");
@@ -70,7 +56,7 @@ find(char *path, char *target)
     strcpy(buf, path);
     p = buf+strlen(buf);
     *p++ = '/';
-    while(read(fd, &de, sizeof(de)) == sizeof(de)){       // 按次序读出目录中所有文件
+    while(read(fd, &de, sizeof(de)) == sizeof(de)){
       if(de.inum == 0)
         continue;
       memmove(p, de.name, DIRSIZ);
@@ -79,34 +65,27 @@ find(char *path, char *target)
         printf("find: cannot stat %s\n", buf);
         continue;
       }
-      if(isrecursive(buf)){
-        find(buf, target);
+      if(strcmp(buf, ".") == 0 || strcmp(buf, "..") == 0){
+        continue;
       }
+    if (st.type == T_DIR && strcmp(p, ".") != 0 && strcmp(p, "..") != 0) {
+      find(buf, filename);
+    } else if (strcmp(filename, p) == 0)
+      printf("%s\n", buf);
     }
     break;
   }
   close(fd);
 }
 
-/* 
-  第一个参数：find命令
-  第二个参数：从什么位置开始查找
-  第三个参数：查找文件或目录的名称
-*/ 
-
 int
-main(int argc, char *argv[])  
+main(int argc, char *argv[])
 {
-  if(argc == 1){
-    printf("usage : find [path] [target]\n");
-    exit(-1);
+
+  if(argc < 3){
+    fprintf(2, "usage: find dir filename\n");
+    exit(1);
   }
-  if(argc == 2){
-    find(".",argv[1]); 
-    exit(0);
-  }
-  if(argc == 3){
-    find(argv[1],argv[2]); 
-  }
+  find(argv[1], argv[2]);
   exit(0);
 }
